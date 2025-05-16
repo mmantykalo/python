@@ -17,3 +17,4 @@ class Post(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="posts")
+    likes = relationship("Like", back_populates="post", cascade="all, delete-orphan")

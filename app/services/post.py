@@ -1,7 +1,8 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.models.post import Post
+from app.models.like import Like
 from typing import List, Dict, Any, Optional
 
 class PostService:
@@ -10,9 +11,14 @@ class PostService:
         # Get total count
         total = await db.scalar(select(func.count()).select_from(Post))
         
-        # Get paginated posts
+        # Get paginated posts with likes count
         result = await db.execute(
-            select(Post)
+            select(
+                Post,
+                func.count(Like.id).label('likes_count')
+            )
+            .outerjoin(Like)
+            .group_by(Post.id)
             .order_by(Post.created_at.desc())
             .offset(skip)
             .limit(limit)
