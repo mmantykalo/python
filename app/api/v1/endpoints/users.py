@@ -15,7 +15,11 @@ async def get_users(db: AsyncSession = Depends(get_db), current_user: User = Dep
     return await UserService.get_users(db)
 
 @router.get("/users/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def get_user(
+    user_id: int, 
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     user = await UserService.get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -51,7 +55,12 @@ async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.put("/users/{user_id}", response_model=UserResponse)
-async def update_user(user_id: int, user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def update_user(
+    user_id: int, 
+    user: UserCreate, 
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     user_dict = user.model_dump()
     user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
     updated_user = await UserService.update_user(db, user_id, user_dict)
@@ -60,7 +69,11 @@ async def update_user(user_id: int, user: UserCreate, db: AsyncSession = Depends
     return updated_user
 
 @router.delete("/users/{user_id}", response_model=UserResponse)
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_user(
+    user_id: int, 
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     deleted_user = await UserService.delete_user(db, user_id)
     if not deleted_user:
         raise HTTPException(status_code=404, detail="User not found")
