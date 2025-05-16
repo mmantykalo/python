@@ -35,7 +35,7 @@ class UserService:
         return db_user
 
     @staticmethod
-    async def update_user(db: AsyncSession, user_id: int, user: UserUpdate):
+    async def update_user(db: AsyncSession, user_id: int, user: Dict[str, Any]):
         db_user = await UserService.get_user(db, user_id)
         if db_user:
             for key, value in user.model_dump().items():
