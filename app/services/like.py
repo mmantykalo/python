@@ -5,13 +5,13 @@ from app.models.like import Like
 from app.models.post import Post
 from typing import Optional, List
 
+class LikeService:
     @staticmethod
     async def get_post_likes(db: AsyncSession, post_id: int, skip: int = 0, limit: int = 10) -> List[Like]:
         query = select(Like).filter(Like.post_id == post_id).offset(skip).limit(limit)
         result = await db.execute(query)
-        return result.scalars().all(), List
+        return result.scalars().all()
 
-class LikeService:
     @staticmethod
     async def create_like(db: AsyncSession, post_id: int, user_id: int) -> Optional[Like]:
         db_like = Like(post_id=post_id, user_id=user_id)
