@@ -58,13 +58,50 @@ async def create_post(
 ):
     return await PostService.create_post(db, post.model_dump(), current_user.id)
 
+@router.get("/posts/{post_id}", response_model=PostResponse)
+async def get_post(
+    post_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    post = await PostService.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+@router.put("/posts/{post_id}", response_model=PostResponse)
+async def update_post(
+    post_id: int,
+    post: PostCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Check if post exists and belongs to user
+    existing_post = await PostService.get_post(db, post_id)
+    if not existing_post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    if existing_post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    updated_post = await PostService.update_post(
+        db, 
+        post_id, 
+        post.model_dump(),
+        current_user.id
+    )
+    return updated_post
+
 @router.delete("/posts/{post_id}", response_model=PostResponse)
 async def delete_post(
     post_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    post = await PostService.delete_post(db, post_id, current_user.id)
-    if not post:
+    # Check if post exists and belongs to user
+    existing_post = await PostService.get_post(db, post_id)
+    if not existing_post:
         raise HTTPException(status_code=404, detail="Post not found")
+    if existing_post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    post = await PostService.delete_post(db, post_id, current_user.id)
     return post

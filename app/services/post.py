@@ -68,6 +68,29 @@ class PostService:
         return db_post
 
     @staticmethod
+    async def get_post(db: AsyncSession, post_id: int) -> Optional[Post]:
+        result = await db.execute(select(Post).filter(Post.id == post_id))
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def update_post(
+        db: AsyncSession, 
+        post_id: int, 
+        post_data: Dict[str, Any],
+        user_id: int
+    ) -> Optional[Post]:
+        result = await db.execute(
+            select(Post).filter(Post.id == post_id, Post.user_id == user_id)
+        )
+        post = result.scalar_one_or_none()
+        if post:
+            for key, value in post_data.items():
+                setattr(post, key, value)
+            await db.commit()
+            await db.refresh(post)
+        return post
+
+    @staticmethod
     async def delete_post(db: AsyncSession, post_id: int, user_id: int) -> Optional[Post]:
         result = await db.execute(
             select(Post).filter(Post.id == post_id, Post.user_id == user_id)
