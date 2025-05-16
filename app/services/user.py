@@ -27,8 +27,8 @@ class UserService:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def create_user(db: AsyncSession, user: UserCreate):
-        db_user = User(**user.model_dump())
+    async def create_user(db: AsyncSession, user: Dict[str, Any]):
+        db_user = User(**user)
         db.add(db_user)
         await db.commit()
         await db.refresh(db_user)

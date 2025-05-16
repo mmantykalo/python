@@ -5,7 +5,7 @@ from typing import List
 from app.api.deps import get_db
 from app.schemas.user import UserResponse, UserCreate, UserLogin
 from app.services.user import UserService
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, create_access_token
 
 router = APIRouter()
 
