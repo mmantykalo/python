@@ -50,13 +50,39 @@ async def get_posts_by_location(
 ):
     return await PostService.get_posts_by_location(db, lat_min, lat_max, lon_min, lon_max)
 
+from fastapi import UploadFile, File, Form
+import cloudinary
+import cloudinary.uploader
+from app.core.config import settings
+
+# Initialize cloudinary
+cloudinary.config(
+    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+    api_key=settings.CLOUDINARY_API_KEY,
+    api_secret=settings.CLOUDINARY_API_SECRET
+)
+
 @router.post("/posts/", response_model=PostResponse)
 async def create_post(
-    post: PostCreate,
+    image: UploadFile = File(...),
+    comment: str = Form(None),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await PostService.create_post(db, post.model_dump(), current_user.id)
+    # Upload image to cloudinary
+    result = cloudinary.uploader.upload(image.file)
+    
+    # Create post data
+    post_data = {
+        "image_url": result["secure_url"],
+        "comment": comment,
+        "latitude": latitude,
+        "longitude": longitude
+    }
+    
+    return await PostService.create_post(db, post_data, current_user.id)
 
 @router.get("/posts/{post_id}", response_model=PostResponse)
 async def get_post(

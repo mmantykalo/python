@@ -3,8 +3,14 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
 
+from fastapi import UploadFile, File
+
 class PostBase(BaseModel):
-    image_url: str
+    comment: Optional[str] = None
+    latitude: float
+    longitude: float
+
+class PostCreate(BaseModel):
     comment: Optional[str] = None
     latitude: float
     longitude: float
