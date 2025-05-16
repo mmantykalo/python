@@ -26,6 +26,21 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
     return await UserService.create_user(db, user_dict)
 
+@router.post("/register", response_model=UserResponse)
+async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    # Check if user already exists
+    db_user = await UserService.get_user_by_username(db, user.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    db_user = await UserService.get_user_by_email(db, user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user_dict = user.model_dump()
+    user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
+    return await UserService.create_user(db, user_dict)
+
 @router.post("/login")
 async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
     user = await UserService.authenticate_user(db, user_data.username, user_data.password)
