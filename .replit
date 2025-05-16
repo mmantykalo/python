@@ -1,5 +1,5 @@
-run = ["uvicorn", "main:app", "--host", "0.0.0.0", "--reload"]
-modules = ["python-3.11"]
+run = "uvicorn main:app --host 0.0.0.0 --reload"
+modules = ["python-3.12"]
 
 hidden = [".pythonlibs"]
 
@@ -8,7 +8,7 @@ channel = "stable-24_05"
 packages = ["libxcrypt", "postgresql"]
 
 [deployment]
-run = ["uvicorn", "main:app", "--host", "0.0.0.0"]
+run = ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --reload"]
 deploymentTarget = "cloudrun"
 
 [[ports]]
