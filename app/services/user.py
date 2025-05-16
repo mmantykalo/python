@@ -2,9 +2,19 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.core.security import verify_password
+from typing import Optional, Dict, Any
 
 class UserService:
+    @staticmethod
+    async def authenticate_user(db: AsyncSession, username: str, password: str) -> Optional[User]:
+        result = await db.execute(select(User).filter(User.username == username))
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        if not verify_password(password, user.hashed_password):
+            return None
+        return user
     @staticmethod
     async def get_users(db: AsyncSession):
         result = await db.execute(select(User))
