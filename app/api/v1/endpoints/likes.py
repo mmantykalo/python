@@ -28,3 +28,14 @@ async def unlike_post(
     success = await LikeService.delete_like(db, post_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Like not found")
+
+@router.get("/posts/{post_id}/likes", response_model=List[LikeResponse])
+async def get_post_likes(
+    post_id: int,
+    page: int = 1,
+    size: int = 10,
+    db: AsyncSession = Depends(get_db)
+):
+    skip = (page - 1) * size
+    likes = await LikeService.get_post_likes(db, post_id, skip, size)
+    return likes

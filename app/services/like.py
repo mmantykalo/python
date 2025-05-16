@@ -3,7 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.like import Like
 from app.models.post import Post
-from typing import Optional
+from typing import Optional, List
+
+    @staticmethod
+    async def get_post_likes(db: AsyncSession, post_id: int, skip: int = 0, limit: int = 10) -> List[Like]:
+        query = select(Like).filter(Like.post_id == post_id).offset(skip).limit(limit)
+        result = await db.execute(query)
+        return result.scalars().all(), List
 
 class LikeService:
     @staticmethod
