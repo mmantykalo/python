@@ -6,9 +6,42 @@ from typing import List, Dict, Any, Optional
 
 class PostService:
     @staticmethod
-    async def get_posts(db: AsyncSession) -> List[Post]:
-        result = await db.execute(select(Post).order_by(Post.created_at.desc()))
-        return result.scalars().all()
+    async def get_posts(db: AsyncSession, skip: int = 0, limit: int = 10) -> tuple[List[Post], int]:
+        # Get total count
+        total = await db.scalar(select(func.count()).select_from(Post))
+        
+        # Get paginated posts
+        result = await db.execute(
+            select(Post)
+            .order_by(Post.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        return result.scalars().all(), total
+
+    @staticmethod
+    async def get_user_posts(
+        db: AsyncSession, 
+        user_id: int,
+        skip: int = 0,
+        limit: int = 10
+    ) -> tuple[List[Post], int]:
+        # Get total count for user
+        total = await db.scalar(
+            select(func.count())
+            .select_from(Post)
+            .filter(Post.user_id == user_id)
+        )
+        
+        # Get paginated user posts
+        result = await db.execute(
+            select(Post)
+            .filter(Post.user_id == user_id)
+            .order_by(Post.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        return result.scalars().all(), total
 
     @staticmethod
     async def get_posts_by_location(

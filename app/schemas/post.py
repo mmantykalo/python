@@ -1,7 +1,13 @@
 
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+
+class PaginatedResponse(BaseModel):
+    items: List[PostResponse]
+    total: int
+    page: int
+    size: int
 
 class PostBase(BaseModel):
     image_url: str
