@@ -6,7 +6,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.user import UserResponse, UserCreate, UserLogin
 from app.services.user import UserService
-from app.core.security import get_password_hash, create_access_token
+from app.core.security import get_password_hash, create_access_token, verify_password
 
 router = APIRouter()
 
@@ -78,3 +78,31 @@ async def delete_user(
     if not deleted_user:
         raise HTTPException(status_code=404, detail="User not found")
     return deleted_user
+@router.get("/me", response_model=UserResponse)
+async def read_user_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@router.put("/me", response_model=UserResponse)
+async def update_user_me(
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    user_dict = user_data.model_dump()
+    user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
+    updated_user = await UserService.update_user(db, current_user.id, user_dict)
+    return updated_user
+
+@router.post("/me/change-password")
+async def change_password(
+    old_password: str,
+    new_password: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not verify_password(old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect password")
+    
+    user_dict = {"hashed_password": get_password_hash(new_password)}
+    await UserService.update_user(db, current_user.id, user_dict)
+    return {"message": "Password updated successfully"}
