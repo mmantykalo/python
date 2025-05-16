@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.models.user import User
 from app.core.security import verify_password
 from typing import Optional, Dict, Any
+from app.schemas.user import UserCreate
 
 class UserService:
     @staticmethod
