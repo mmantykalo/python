@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional, List
@@ -10,16 +9,13 @@ class PostBase(BaseModel):
     latitude: float
     longitude: float
 
-class PostCreate(BaseModel):
-    comment: Optional[str] = None
-    latitude: float
-    longitude: float
-
 class PostCreate(PostBase):
+    """Schema for creating a new post (without image_url as it's generated)"""
     pass
 
 class PostResponse(PostBase):
     id: int
+    image_url: str  # Added missing image_url field
     user_id: int
     created_at: datetime
     updated_at: datetime
