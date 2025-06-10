@@ -52,18 +52,34 @@ class PostService:
     @staticmethod
     async def get_posts_by_location(
         db: AsyncSession, 
-        lat_min: float, 
-        lat_max: float, 
-        lon_min: float, 
-        lon_max: float
+        center_lat: float, 
+        center_lon: float, 
+        radius_km: float = 30.0
     ) -> List[Post]:
+        from app.utils.geo import get_bounding_box, haversine_distance
+        
+        # Get approximate bounding box for initial filtering
+        lat_min, lat_max, lon_min, lon_max = get_bounding_box(center_lat, center_lon, radius_km)
+        
+        # Get posts within bounding box
         result = await db.execute(
             select(Post)
             .filter(Post.latitude.between(lat_min, lat_max))
             .filter(Post.longitude.between(lon_min, lon_max))
             .order_by(Post.created_at.desc())
         )
-        return result.scalars().all()
+        posts = result.scalars().all()
+        
+        # Apply precise distance filtering
+        filtered_posts = []
+        for post in posts:
+            distance = haversine_distance(center_lat, center_lon, post.latitude, post.longitude)
+            if distance <= radius_km:
+                # Add distance as dynamic attribute for potential future use
+                post.distance = distance
+                filtered_posts.append(post)
+        
+        return filtered_posts
 
     @staticmethod
     async def create_post(db: AsyncSession, post_data: Dict[str, Any], user_id: int) -> Post:

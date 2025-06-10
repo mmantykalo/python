@@ -49,15 +49,20 @@ async def get_user_posts(
 
 @router.get("/posts/map", response_model=List[PostResponse])
 async def get_posts_by_location(
-    lat_min: float,
-    lat_max: float,
-    lon_min: float,
-    lon_max: float,
+    center_lat: float,
+    center_lon: float,
+    radius_km: float = 30.0,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get posts on map - requires authentication"""
-    return await PostService.get_posts_by_location(db, lat_min, lat_max, lon_min, lon_max)
+    """Get posts on map within radius from center point - requires authentication
+    
+    Args:
+        center_lat: Center latitude in decimal degrees
+        center_lon: Center longitude in decimal degrees  
+        radius_km: Search radius in kilometers (default: 30km)
+    """
+    return await PostService.get_posts_by_location(db, center_lat, center_lon, radius_km)
 
 from fastapi import UploadFile, File, Form
 import cloudinary
