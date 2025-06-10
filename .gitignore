@@ -45,3 +45,14 @@ poetry.lock
 
 # Logs
 *.log
+
+# Docker
+.env
+!env.example
+docker-compose.override.yml
+docker-compose.prod.yml
+
+# Database
+*.db
+sql_app.db
+postgres_data/

@@ -1,0 +1,26 @@
+services:
+  api:
+    # Development-specific environment variables
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - RELOAD=true
+    # Mount source code for hot reload
+    volumes:
+      - .:/app
+      - /app/__pycache__ # Exclude __pycache__ from volume
+    # Expose additional development ports if needed
+    # ports:
+    #   - "8001:8001"  # For additional dev services
+
+  # Add development database with sample data (optional)
+  # db-dev:
+  #   extends:
+  #     service: db
+  #   environment:
+  #     POSTGRES_DB: geosocial_app_dev
+  #   volumes:
+  #     - postgres_dev_data:/var/lib/postgresql/data
+  #     - ./docker/dev-data.sql:/docker-entrypoint-initdb.d/dev-data.sql
+# volumes:
+#   postgres_dev_data:
