@@ -14,5 +14,12 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str = os.getenv('CLOUDINARY_CLOUD_NAME', '')
     CLOUDINARY_API_KEY: str = os.getenv('CLOUDINARY_API_KEY', '')
     CLOUDINARY_API_SECRET: str = os.getenv('CLOUDINARY_API_SECRET', '')
+    
+    @property
+    def SYNC_DATABASE_URL(self) -> str:
+        """Convert async database URL to sync for Alembic"""
+        if self.DATABASE_URL.startswith('postgresql+asyncpg://'):
+            return self.DATABASE_URL.replace('postgresql+asyncpg://', 'postgresql+psycopg2://')
+        return self.DATABASE_URL
 
 settings = Settings()

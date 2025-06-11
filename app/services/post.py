@@ -1,8 +1,10 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from app.models.post import Post
+from sqlalchemy import select, func, and_, or_
+from app.models.post import Post, PrivacyLevel
 from app.models.like import Like
+from app.models.follow import Follow
+from app.models.user import User
 from typing import List, Dict, Any, Optional
 
 class PostService:
@@ -52,34 +54,52 @@ class PostService:
     @staticmethod
     async def get_posts_by_location(
         db: AsyncSession, 
-        center_lat: float, 
-        center_lon: float, 
-        radius_km: float = 30.0
+        lat_min: float, 
+        lat_max: float, 
+        lon_min: float, 
+        lon_max: float,
+        current_user_id: int
     ) -> List[Post]:
-        from app.utils.geo import get_bounding_box, haversine_distance
+        """
+        Get posts in location with privacy filtering:
+        - PUBLIC: Show to all authenticated users
+        - FOLLOWERS: Show only to followers of the post author
+        - PRIVATE: Show only to the post author
+        """
         
-        # Get approximate bounding box for initial filtering
-        lat_min, lat_max, lon_min, lon_max = get_bounding_box(center_lat, center_lon, radius_km)
+        # Base query with location filtering and likes/dislikes count
+        query = select(
+            Post,
+            func.count(func.nullif(Like.is_like, False)).label('likes_count'),
+            func.count(func.nullif(Like.is_like, True)).label('dislikes_count')
+        ).outerjoin(Like).filter(
+            Post.latitude.between(lat_min, lat_max),
+            Post.longitude.between(lon_min, lon_max)
+        ).group_by(Post.id)
         
-        # Get posts within bounding box
-        result = await db.execute(
-            select(Post)
-            .filter(Post.latitude.between(lat_min, lat_max))
-            .filter(Post.longitude.between(lon_min, lon_max))
-            .order_by(Post.created_at.desc())
+        # Privacy filtering
+        privacy_conditions = or_(
+            # Show public posts to everyone
+            Post.privacy_level == PrivacyLevel.PUBLIC,
+            
+            # Show user's own posts regardless of privacy level
+            Post.user_id == current_user_id,
+            
+            # Show followers-only posts to followers
+            and_(
+                Post.privacy_level == PrivacyLevel.FOLLOWERS,
+                Post.user_id.in_(
+                    select(Follow.following_id).filter(
+                        Follow.follower_id == current_user_id
+                    )
+                )
+            )
         )
-        posts = result.scalars().all()
         
-        # Apply precise distance filtering
-        filtered_posts = []
-        for post in posts:
-            distance = haversine_distance(center_lat, center_lon, post.latitude, post.longitude)
-            if distance <= radius_km:
-                # Add distance as dynamic attribute for potential future use
-                post.distance = distance
-                filtered_posts.append(post)
+        query = query.filter(privacy_conditions).order_by(Post.created_at.desc())
         
-        return filtered_posts
+        result = await db.execute(query)
+        return result.scalars().all()
 
     @staticmethod
     async def create_post(db: AsyncSession, post_data: Dict[str, Any], user_id: int) -> Post:
