@@ -19,6 +19,8 @@ class Post(Base):
     longitude = Column(Float, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     privacy_level = Column(Enum(PrivacyLevel), default=PrivacyLevel.PUBLIC)
+    likes_count = Column(Integer, default=0)
+    dislikes_count = Column(Integer, default=0)
     comments_count = Column(Integer, default=0)
     is_comments_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

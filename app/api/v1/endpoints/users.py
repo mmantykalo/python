@@ -128,3 +128,141 @@ async def get_user_public_info(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+# =====================
+# FOLLOW/UNFOLLOW ENDPOINTS
+# =====================
+
+@router.post("/users/{user_id}/follow")
+async def follow_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Follow a user"""
+    # Check if trying to follow yourself
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    
+    # Check if target user exists
+    result = await db.execute(select(User).filter(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if already following
+    existing_follow = await db.execute(
+        select(Follow).filter(
+            Follow.follower_id == current_user.id,
+            Follow.following_id == user_id
+        )
+    )
+    if existing_follow.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Already following this user")
+    
+    # Create follow relationship
+    follow = Follow(
+        follower_id=current_user.id,
+        following_id=user_id
+    )
+    db.add(follow)
+    
+    # Update counters
+    current_user.following_count = (current_user.following_count or 0) + 1
+    target_user.followers_count = (target_user.followers_count or 0) + 1
+    
+    await db.commit()
+    return {"message": f"Now following {target_user.username}"}
+
+@router.delete("/users/{user_id}/follow")
+async def unfollow_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Unfollow a user"""
+    # Check if trying to unfollow yourself
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot unfollow yourself")
+    
+    # Check if target user exists
+    result = await db.execute(select(User).filter(User.id == user_id))
+    target_user = result.scalar_one_or_none()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Find existing follow relationship
+    existing_follow_result = await db.execute(
+        select(Follow).filter(
+            Follow.follower_id == current_user.id,
+            Follow.following_id == user_id
+        )
+    )
+    existing_follow = existing_follow_result.scalar_one_or_none()
+    
+    if not existing_follow:
+        raise HTTPException(status_code=400, detail="Not following this user")
+    
+    # Remove follow relationship
+    await db.delete(existing_follow)
+    
+    # Update counters
+    current_user.following_count = max(0, (current_user.following_count or 1) - 1)
+    target_user.followers_count = max(0, (target_user.followers_count or 1) - 1)
+    
+    await db.commit()
+    return {"message": f"Unfollowed {target_user.username}"}
+
+@router.get("/users/{user_id}/followers", response_model=List[UserPublicResponse])
+async def get_user_followers(
+    user_id: int,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get public list of user's followers"""
+    # Check if user exists
+    result = await db.execute(select(User).filter(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    skip = (page - 1) * size
+    
+    # Get followers
+    result = await db.execute(
+        select(User)
+        .join(Follow, Follow.follower_id == User.id)
+        .filter(Follow.following_id == user_id)
+        .offset(skip)
+        .limit(size)
+    )
+    followers = result.scalars().all()
+    return followers
+
+@router.get("/users/{user_id}/following", response_model=List[UserPublicResponse])
+async def get_user_following(
+    user_id: int,
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get public list of users that this user follows"""
+    # Check if user exists
+    result = await db.execute(select(User).filter(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    skip = (page - 1) * size
+    
+    # Get following
+    result = await db.execute(
+        select(User)
+        .join(Follow, Follow.following_id == User.id)
+        .filter(Follow.follower_id == user_id)
+        .offset(skip)
+        .limit(size)
+    )
+    following = result.scalars().all()
+    return following
