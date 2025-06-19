@@ -1,7 +1,7 @@
 from .user import UserBase, UserCreate, UserLogin, UserUpdate, UserResponse, UserPublicResponse
 from .post import PostBase, PostCreate, PostUpdate, PostResponse, PaginatedResponse, PrivacyLevel
 from .like import LikeBase, LikeCreate, LikeUpdate, LikeResponse
-from .comment import CommentBase, CommentCreate, CommentUpdate, CommentResponse
+from .comment import CommentBase, CommentCreate, CommentCreateRequest, CommentUpdate, CommentResponse
 from .follow import FollowBase, FollowCreate, FollowResponse
 from .comment_like import CommentLikeBase, CommentLikeCreate, CommentLikeUpdate, CommentLikeResponse
 from .user_settings import UserSettingsBase, UserSettingsCreate, UserSettingsUpdate, UserSettingsResponse
@@ -17,7 +17,7 @@ __all__ = [
     "LikeBase", "LikeCreate", "LikeUpdate", "LikeResponse",
     
     # Comment schemas
-    "CommentBase", "CommentCreate", "CommentUpdate", "CommentResponse",
+    "CommentBase", "CommentCreate", "CommentCreateRequest", "CommentUpdate", "CommentResponse",
     
     # Follow schemas
     "FollowBase", "FollowCreate", "FollowResponse",

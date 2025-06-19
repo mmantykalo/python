@@ -1,4 +1,3 @@
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from app.models.post import Post, PrivacyLevel
@@ -25,6 +24,73 @@ class PostService:
             .offset(skip)
             .limit(limit)
         )
+        return result.scalars().all(), total
+
+    @staticmethod
+    async def get_posts_with_filters(
+        db: AsyncSession, 
+        skip: int = 0, 
+        limit: int = 10,
+        current_user_id: Optional[int] = None,
+        privacy_filter: bool = True,
+        user_id: Optional[int] = None,
+        following_only: bool = False
+    ) -> tuple[List[Post], int]:
+        """
+        Get posts with advanced filtering:
+        - privacy_filter: Apply privacy level filtering (requires current_user_id)
+        - user_id: Filter posts by specific user
+        - following_only: Show only posts from users that current user follows
+        """
+        
+        # Base query
+        query = select(Post).order_by(Post.created_at.desc())
+        count_query = select(func.count()).select_from(Post)
+        
+        # Filter by specific user
+        if user_id:
+            query = query.filter(Post.user_id == user_id)
+            count_query = count_query.filter(Post.user_id == user_id)
+        
+        # Filter by following only
+        if following_only and current_user_id:
+            # Show posts only from users that current user follows
+            following_user_ids = select(Follow.following_id).filter(
+                Follow.follower_id == current_user_id
+            )
+            query = query.filter(Post.user_id.in_(following_user_ids))
+            count_query = count_query.filter(Post.user_id.in_(following_user_ids))
+        
+        # Apply privacy filtering
+        if privacy_filter and current_user_id:
+            privacy_conditions = or_(
+                # Show public posts to everyone
+                Post.privacy_level == PrivacyLevel.PUBLIC,
+                
+                # Show user's own posts regardless of privacy level
+                Post.user_id == current_user_id,
+                
+                # Show followers-only posts to followers
+                and_(
+                    Post.privacy_level == PrivacyLevel.FOLLOWERS,
+                    Post.user_id.in_(
+                        select(Follow.following_id).filter(
+                            Follow.follower_id == current_user_id
+                        )
+                    )
+                )
+            )
+            query = query.filter(privacy_conditions)
+            count_query = count_query.filter(privacy_conditions)
+        
+        # Get total count
+        total = await db.scalar(count_query)
+        
+        # Get paginated posts
+        result = await db.execute(
+            query.offset(skip).limit(limit)
+        )
+        
         return result.scalars().all(), total
 
     @staticmethod

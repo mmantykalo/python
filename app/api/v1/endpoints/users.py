@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
-from app.schemas.user import UserResponse, UserCreate, UserLogin
+from app.models.follow import Follow
+from app.schemas.user import UserResponse, UserCreate, UserLogin, UserPublicResponse
 from app.services.user import UserService
 from app.core.security import get_password_hash, create_access_token, verify_password
 
@@ -73,3 +75,56 @@ async def change_password(
     user_dict = {"hashed_password": get_password_hash(new_password)}
     await UserService.update_user(db, current_user.id, user_dict)
     return {"message": "Password updated successfully"}
+
+@router.get("/me/followers", response_model=List[UserPublicResponse])
+async def get_my_followers(
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of users who follow current user"""
+    skip = (page - 1) * size
+    
+    # Get followers: users who have follow relationship where following_id = current_user.id
+    result = await db.execute(
+        select(User)
+        .join(Follow, Follow.follower_id == User.id)
+        .filter(Follow.following_id == current_user.id)
+        .offset(skip)
+        .limit(size)
+    )
+    followers = result.scalars().all()
+    return followers
+
+@router.get("/me/following", response_model=List[UserPublicResponse])
+async def get_my_following(
+    page: int = 1,
+    size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of users that current user follows"""
+    skip = (page - 1) * size
+    
+    # Get following: users who are followed by current user (follower_id = current_user.id)
+    result = await db.execute(
+        select(User)
+        .join(Follow, Follow.following_id == User.id)
+        .filter(Follow.follower_id == current_user.id)
+        .offset(skip)
+        .limit(size)
+    )
+    following = result.scalars().all()
+    return following
+
+@router.get("/users/{user_id}/public-info", response_model=UserPublicResponse)
+async def get_user_public_info(
+    user_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get public information about any user (no auth required in future)"""
+    user = await UserService.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user

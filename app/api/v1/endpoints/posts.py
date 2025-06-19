@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
@@ -13,10 +12,55 @@ router = APIRouter()
 async def get_posts(
     page: int = 1,
     size: int = 10,
-    db: AsyncSession = Depends(get_db)
+    privacy_filter: bool = True,
+    user_id: Optional[int] = None,
+    following_only: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Get posts with advanced filtering:
+    - privacy_filter: Apply privacy level filtering (default: True)
+    - user_id: Filter posts by specific user (optional)
+    - following_only: Show only posts from followed users (default: False)
+    """
     skip = (page - 1) * size
-    posts, total = await PostService.get_posts(db, skip, size)
+    posts, total = await PostService.get_posts_with_filters(
+        db=db,
+        skip=skip,
+        limit=size,
+        current_user_id=current_user.id,
+        privacy_filter=privacy_filter,
+        user_id=user_id,
+        following_only=following_only
+    )
+    return {
+        "items": posts,
+        "total": total,
+        "page": page,
+        "size": size
+    }
+
+@router.get("/posts/feed", response_model=PaginatedResponse)
+async def get_posts_feed(
+    page: int = 1,
+    size: int = 10,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get personalized posts feed: posts from followed users + public posts
+    """
+    skip = (page - 1) * size
+    posts, total = await PostService.get_posts_with_filters(
+        db=db,
+        skip=skip,
+        limit=size,
+        current_user_id=current_user.id,
+        privacy_filter=True,  # Always apply privacy filtering
+        user_id=None,
+        following_only=False  # Show all posts with privacy filtering
+    )
     return {
         "items": posts,
         "total": total,
