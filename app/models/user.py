@@ -22,3 +22,4 @@ class User(Base):
     settings = relationship("UserSettings", back_populates="user", uselist=False)
     followers = relationship("Follow", foreign_keys="Follow.following_id", back_populates="following")
     following = relationship("Follow", foreign_keys="Follow.follower_id", back_populates="follower")
+    refresh_tokens = relationship("RefreshToken", back_populates="user")

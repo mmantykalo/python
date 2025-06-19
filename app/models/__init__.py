@@ -5,6 +5,7 @@ from .comment import Comment
 from .follow import Follow
 from .comment_like import CommentLike
 from .user_settings import UserSettings
+from .refresh_token import RefreshToken
 
 __all__ = [
     "User",
@@ -14,5 +15,6 @@ __all__ = [
     "Comment",
     "Follow", 
     "CommentLike",
-    "UserSettings"
+    "UserSettings",
+    "RefreshToken"
 ] 

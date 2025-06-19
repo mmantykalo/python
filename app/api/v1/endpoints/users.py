@@ -25,27 +25,9 @@ async def get_user(
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-@router.post("/register", response_model=UserResponse)
-async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    db_user = await UserService.get_user_by_username(db, user.username)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    
-    db_user = await UserService.get_user_by_email(db, user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    user_dict = user.model_dump()
-    user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
-    return await UserService.create_user(db, user_dict)
+# Register endpoint moved to /auth/register with rate limiting
 
-@router.post("/login")
-async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
-    user = await UserService.authenticate_user(db, user_data.username, user_data.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
-    access_token = create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+# Login endpoint moved to /auth/login with refresh token support
 
 @router.get("/me", response_model=UserResponse)
 async def read_user_me(current_user: User = Depends(get_current_user)):
