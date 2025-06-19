@@ -53,8 +53,9 @@ curl -X POST "http://localhost:8000/api/v1/login" \
 
 ```bash
 # Замініть YOUR_TOKEN на отриманий токен
+# УВАГА: Тепер використовуємо кастомний header X-Authorization
 curl -X GET "http://localhost:8000/api/v1/me" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+  -H "X-Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### 4. Створення поста (з файлом)
@@ -62,7 +63,7 @@ curl -X GET "http://localhost:8000/api/v1/me" \
 ```bash
 # Створіть тестове зображення або використовуйте існуюче
 curl -X POST "http://localhost:8000/api/v1/posts/" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Authorization: Bearer YOUR_TOKEN" \
   -F "image=@/path/to/your/image.jpg" \
   -F "comment=Мій перший пост!" \
   -F "latitude=50.4501" \
@@ -84,15 +85,17 @@ curl "http://localhost:8000/api/v1/posts/map?lat_min=50.0&lat_max=51.0&lon_min=3
 ```bash
 # Замініть POST_ID на ID реального поста
 curl -X POST "http://localhost:8000/api/v1/posts/POST_ID/like" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+  -H "X-Authorization: Bearer YOUR_TOKEN"
 ```
 
 ## 🛠 Тестування через Swagger UI
 
 1. **Відкрийте** http://localhost:8000/docs
 2. **Натисніть "Authorize"** у правому верхньому куті
-3. **Введіть токен** у форматі: `Bearer YOUR_TOKEN`
+3. **Введіть токен** у форматі: `Bearer YOUR_TOKEN` в поле X-Authorization
 4. **Тестуйте ендпоінти** через інтерфейс
+
+⚠️ **ВАЖЛИВО**: Тепер для авторизації використовується кастомний header `X-Authorization` замість стандартного `Authorization`. Формат залишається такий же: `Bearer YOUR_TOKEN`
 
 ## 🗄️ Перевірка бази даних
 

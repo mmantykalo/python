@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.openapi.utils import get_openapi
 from app.db.base import Base, engine
 from app.api.v1.router import router
 import uvicorn
@@ -78,6 +79,32 @@ else:
     )
 
 app.include_router(router, prefix="/api/v1")
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    openapi_schema = get_openapi(
+        title="User Management API",
+        version="1.0.0",
+        description="Production-ready User Management API with geo-social features",
+        routes=app.routes,
+    )
+    
+    # Add custom security scheme for X-Authorization header
+    openapi_schema["components"]["securitySchemes"] = {
+        "X-Authorization": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Authorization",
+            "description": "Enter: Bearer YOUR_TOKEN"
+        }
+    }
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 @app.get("/health")
 async def health_check():
