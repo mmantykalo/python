@@ -6,7 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.user import UserLogin, UserCreate, UserResponse
-from app.schemas.refresh_token import TokenResponse, RefreshRequest
+from app.schemas.refresh_token import TokenResponse, RefreshRequest, RegisterResponse
 from app.services.user import UserService
 from app.services.refresh_token import RefreshTokenService
 from app.core.security import create_access_token, verify_password, get_password_hash
@@ -17,7 +17,7 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=RegisterResponse)
 @limiter.limit("3/minute")  # Max 3 registration attempts per minute per IP
 async def register(
     request: Request,
@@ -38,7 +38,14 @@ async def register(
     # Create user
     user_dict = user.model_dump()
     user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
-    return await UserService.create_user(db, user_dict)
+    created_user = await UserService.create_user(db, user_dict)
+    
+    # Return minimal info - user needs to login to get full access
+    return RegisterResponse(
+        message="User registered successfully. Please login to continue.",
+        username=created_user.username,
+        email=created_user.email
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -59,7 +66,7 @@ async def login(
         )
     
     # Create access token
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = create_access_token(data={"sub": user.username}, user_id=user.id)
     
     # Create refresh token
     device_info = request.headers.get("User-Agent", "Unknown device")
@@ -73,7 +80,8 @@ async def login(
         access_token=access_token,
         refresh_token=refresh_token.token,
         token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # Convert to seconds
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
+        user_info=UserResponse.from_orm(user)  # Convert to Pydantic schema
     )
 
 
@@ -107,7 +115,7 @@ async def refresh_access_token(
         )
     
     # Create new access token
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = create_access_token(data={"sub": user.username}, user_id=user.id)
     
     # Create new refresh token (rotate refresh tokens for security)
     device_info = request.headers.get("User-Agent", "Unknown device")
@@ -121,7 +129,8 @@ async def refresh_access_token(
         access_token=access_token,
         refresh_token=new_refresh_token.token,
         token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user_info=UserResponse.from_orm(user)  # Convert to Pydantic schema
     )
 
 

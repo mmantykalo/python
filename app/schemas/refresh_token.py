@@ -1,6 +1,9 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from app.schemas.user import UserResponse
 
 
 class RefreshTokenCreate(BaseModel):
@@ -28,7 +31,15 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int  # seconds until access token expires
+    user_info: Any  # Use Any to avoid circular import, will be UserResponse at runtime
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str 
+    refresh_token: str
+
+
+class RegisterResponse(BaseModel):
+    """Minimal response for registration - just success confirmation"""
+    message: str
+    username: str
+    email: str 

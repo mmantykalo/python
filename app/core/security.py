@@ -1,4 +1,3 @@
-
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from jose import jwt
@@ -7,10 +6,15 @@ import secrets
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict, user_id: int = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
+    
+    # Add user_id to token payload for future admin functionality
+    if user_id:
+        to_encode.update({"user_id": user_id})
+    
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 def create_refresh_token() -> str:

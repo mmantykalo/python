@@ -17,88 +17,62 @@ async def get_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+    """Get user info. Full info for own profile, limited info for others (future: based on privacy settings)"""
     user = await UserService.get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # For now, only allow access to own profile
+    # Future: implement privacy levels and admin access
+    if user_id != current_user.id:
+        # TODO: Implement privacy settings and admin role check
+        # For now, restrict to own profile only
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     return user
 
-# Register endpoint moved to /auth/register with rate limiting
-
-# Login endpoint moved to /auth/login with refresh token support
-
-@router.get("/me", response_model=UserResponse)
-async def read_user_me(current_user: User = Depends(get_current_user)):
-    return current_user
-
-@router.put("/me", response_model=UserResponse)
-async def update_user_me(
+@router.put("/users/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
     user_data: UserCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Update user profile. Only own profile for now, future: admin can edit any"""
+    # Check access - only own profile for now
+    if user_id != current_user.id:
+        # TODO: Add admin role check
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     user_dict = user_data.model_dump()
     user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
-    updated_user = await UserService.update_user(db, current_user.id, user_dict)
+    updated_user = await UserService.update_user(db, user_id, user_dict)
     return updated_user
 
-@router.post("/me/change-password")
-async def change_password(
+@router.post("/users/{user_id}/change-password")
+async def change_user_password(
+    user_id: int,
     old_password: str,
     new_password: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if not verify_password(old_password, current_user.hashed_password):
+    """Change user password. Only own password for now, future: admin can reset any"""
+    # Check access - only own password for now
+    if user_id != current_user.id:
+        # TODO: Add admin role check for password reset
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    user = await UserService.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not verify_password(old_password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect password")
     
     user_dict = {"hashed_password": get_password_hash(new_password)}
-    await UserService.update_user(db, current_user.id, user_dict)
+    await UserService.update_user(db, user_id, user_dict)
     return {"message": "Password updated successfully"}
-
-@router.get("/me/followers", response_model=List[UserPublicResponse])
-async def get_my_followers(
-    page: int = 1,
-    size: int = 20,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get list of users who follow current user"""
-    skip = (page - 1) * size
-    
-    # Get followers: users who have follow relationship where following_id = current_user.id
-    result = await db.execute(
-        select(User)
-        .join(Follow, Follow.follower_id == User.id)
-        .filter(Follow.following_id == current_user.id)
-        .offset(skip)
-        .limit(size)
-    )
-    followers = result.scalars().all()
-    return followers
-
-@router.get("/me/following", response_model=List[UserPublicResponse])
-async def get_my_following(
-    page: int = 1,
-    size: int = 20,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get list of users that current user follows"""
-    skip = (page - 1) * size
-    
-    # Get following: users who are followed by current user (follower_id = current_user.id)
-    result = await db.execute(
-        select(User)
-        .join(Follow, Follow.following_id == User.id)
-        .filter(Follow.follower_id == current_user.id)
-        .offset(skip)
-        .limit(size)
-    )
-    following = result.scalars().all()
-    return following
 
 @router.get("/users/{user_id}/public-info", response_model=UserPublicResponse)
 async def get_user_public_info(
@@ -200,14 +174,21 @@ async def get_user_followers(
     user_id: int,
     page: int = 1,
     size: int = 20,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    """Get public list of user's followers"""
+    """Get list of user's followers. Full access for own profile, limited for others based on privacy"""
     # Check if user exists
     result = await db.execute(select(User).filter(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Access control: own profile always allowed, others based on privacy (future: settings)
+    if user_id != current_user.id:
+        # TODO: Check user privacy settings for followers visibility
+        # For now, allow public access to followers lists
+        pass
     
     skip = (page - 1) * size
     
@@ -227,14 +208,21 @@ async def get_user_following(
     user_id: int,
     page: int = 1,
     size: int = 20,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    """Get public list of users that this user follows"""
+    """Get list of users that this user follows. Full access for own profile, limited for others based on privacy"""
     # Check if user exists
     result = await db.execute(select(User).filter(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Access control: own profile always allowed, others based on privacy (future: settings)
+    if user_id != current_user.id:
+        # TODO: Check user privacy settings for following visibility
+        # For now, allow public access to following lists
+        pass
     
     skip = (page - 1) * size
     

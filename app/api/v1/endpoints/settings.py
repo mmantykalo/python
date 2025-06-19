@@ -8,21 +8,27 @@ from app.schemas.user_settings import UserSettingsCreate, UserSettingsUpdate, Us
 
 router = APIRouter()
 
-@router.get("/me/settings", response_model=UserSettingsResponse)
+@router.get("/users/{user_id}/settings", response_model=UserSettingsResponse)
 async def get_user_settings(
+    user_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get current user's settings"""
+    """Get user settings. Only own settings for now, future: admin can view any"""
+    # Check access - only own settings for now
+    if user_id != current_user.id:
+        # TODO: Add admin role check
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     result = await db.execute(
-        select(UserSettings).filter(UserSettings.user_id == current_user.id)
+        select(UserSettings).filter(UserSettings.user_id == user_id)
     )
     settings = result.scalar_one_or_none()
     
     if not settings:
         # Create default settings if none exist
         settings = UserSettings(
-            user_id=current_user.id,
+            user_id=user_id,
             search_radius=30000,  # 30km default
             is_private=False,
             allow_comments=True
@@ -33,15 +39,21 @@ async def get_user_settings(
     
     return settings
 
-@router.put("/me/settings", response_model=UserSettingsResponse)
+@router.put("/users/{user_id}/settings", response_model=UserSettingsResponse)
 async def update_user_settings(
+    user_id: int,
     settings_update: UserSettingsUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update current user's settings"""
+    """Update user settings. Only own settings for now, future: admin can edit any"""
+    # Check access - only own settings for now
+    if user_id != current_user.id:
+        # TODO: Add admin role check
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     result = await db.execute(
-        select(UserSettings).filter(UserSettings.user_id == current_user.id)
+        select(UserSettings).filter(UserSettings.user_id == user_id)
     )
     settings = result.scalar_one_or_none()
     
@@ -49,7 +61,7 @@ async def update_user_settings(
         # Create settings if none exist
         settings_data = settings_update.model_dump(exclude_unset=True)
         settings_data.update({
-            "user_id": current_user.id,
+            "user_id": user_id,
             "search_radius": settings_data.get("search_radius", 30000),
             "is_private": settings_data.get("is_private", False),
             "allow_comments": settings_data.get("allow_comments", True)
@@ -65,22 +77,28 @@ async def update_user_settings(
     await db.refresh(settings)
     return settings
 
-@router.put("/me/settings/privacy", response_model=UserSettingsResponse)
+@router.put("/users/{user_id}/settings/privacy", response_model=UserSettingsResponse)
 async def update_privacy_settings(
+    user_id: int,
     is_private: bool,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update privacy settings"""
+    """Update privacy settings. Only own settings for now, future: admin can edit any"""
+    # Check access - only own settings for now
+    if user_id != current_user.id:
+        # TODO: Add admin role check
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     result = await db.execute(
-        select(UserSettings).filter(UserSettings.user_id == current_user.id)
+        select(UserSettings).filter(UserSettings.user_id == user_id)
     )
     settings = result.scalar_one_or_none()
     
     if not settings:
         # Create settings if none exist
         settings = UserSettings(
-            user_id=current_user.id,
+            user_id=user_id,
             search_radius=30000,
             is_private=is_private,
             allow_comments=True
@@ -93,13 +111,19 @@ async def update_privacy_settings(
     await db.refresh(settings)
     return settings
 
-@router.put("/me/settings/search-radius", response_model=UserSettingsResponse)
+@router.put("/users/{user_id}/settings/search-radius", response_model=UserSettingsResponse)
 async def update_search_radius(
+    user_id: int,
     radius: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update search radius (in meters)"""
+    """Update search radius (in meters). Only own settings for now, future: admin can edit any"""
+    # Check access - only own settings for now
+    if user_id != current_user.id:
+        # TODO: Add admin role check
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     # Validate radius (min 100m, max 100km)
     if radius < 100 or radius > 100000:
         raise HTTPException(
@@ -108,14 +132,14 @@ async def update_search_radius(
         )
     
     result = await db.execute(
-        select(UserSettings).filter(UserSettings.user_id == current_user.id)
+        select(UserSettings).filter(UserSettings.user_id == user_id)
     )
     settings = result.scalar_one_or_none()
     
     if not settings:
         # Create settings if none exist
         settings = UserSettings(
-            user_id=current_user.id,
+            user_id=user_id,
             search_radius=radius,
             is_private=False,
             allow_comments=True
@@ -128,22 +152,28 @@ async def update_search_radius(
     await db.refresh(settings)
     return settings
 
-@router.put("/me/settings/comments", response_model=UserSettingsResponse)
+@router.put("/users/{user_id}/settings/comments", response_model=UserSettingsResponse)
 async def update_comment_settings(
+    user_id: int,
     allow_comments: bool,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update comment settings"""
+    """Update comment settings. Only own settings for now, future: admin can edit any"""
+    # Check access - only own settings for now
+    if user_id != current_user.id:
+        # TODO: Add admin role check
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     result = await db.execute(
-        select(UserSettings).filter(UserSettings.user_id == current_user.id)
+        select(UserSettings).filter(UserSettings.user_id == user_id)
     )
     settings = result.scalar_one_or_none()
     
     if not settings:
         # Create settings if none exist
         settings = UserSettings(
-            user_id=current_user.id,
+            user_id=user_id,
             search_radius=30000,
             is_private=False,
             allow_comments=allow_comments
